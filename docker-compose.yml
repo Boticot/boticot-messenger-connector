@@ -1,0 +1,19 @@
+version: '3'
+
+services:
+    boticot-messenger-connector:
+        container_name: boticot-messenger-connector
+        image: "boticot/messenger-connector:0.1.0"
+        restart: "always"
+        environment:
+            - "PORT=8015"
+            - "API_URL=http://localhost:8010"
+            - "AGENT_NAME=bot"
+            - "FACEBOOK_GRAPH_API_URL=https://graph.facebook.com/v11.0/me"
+            - "PAGE_ACCESS_TOKEN=YOUR_FACEBOOK_PAGE_ACCESS_TOKEN"
+            - "APP_ID=YOUR_FACEBOOK_APP_ID"
+            - "APP_SECRET=YOUR_FACEBOOK_APP_SECRET"
+            - "VERIFY_TOKEN=YOUR_API_VERIFY_TOKEN"
+        ports:
+            - "8015:8015"
+
