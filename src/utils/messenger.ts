@@ -1,6 +1,15 @@
+import {
+	Suggestion,
+	QuickReply,
+	Link,
+	MessengerTextAndQuickReplyRequest,
+	MessengerTextRequest,
+	MessengerRequest,
+	Button,
+} from '../../typings/global'
 import { sendToUser } from '../client/messenger'
 
-export const messageText = (sender_psid, message): any => {
+export const messageText = (sender_psid: string, message: string): MessengerTextRequest => {
     const requestBody = {
         "recipient": {
             "id": sender_psid
@@ -12,11 +21,15 @@ export const messageText = (sender_psid, message): any => {
     return requestBody
 }
 
-export const sendMessage = (message): void => {
+export const sendMessage = (message: MessengerRequest): void => {
     sendToUser(message)
 }
 
-export const messageTextAndQuickReplies = (sender_psid, replies, text): any => {
+export const messageTextAndQuickReplies = (
+    sender_psid: string,
+	replies: QuickReply[],
+	text: string
+): MessengerTextAndQuickReplyRequest => {
     let request_body = {
         "recipient": {
             "id": sender_psid
@@ -30,9 +43,14 @@ export const messageTextAndQuickReplies = (sender_psid, replies, text): any => {
     return request_body
 }
 
-export const messageTextUrlAndSuggestions = (sender_psid, message, links, replies): any => {
-    let buttons = []
-    links.forEach(link => {
+export const messageTextUrlAndSuggestions = (
+    sender_psid: string,
+	message: string,
+	links: Link[],
+	replies: QuickReply[],
+): MessengerTextRequest => {
+    let buttons = new Array<Button>()
+    links.forEach((link: Link) => {
         buttons.push({
             "type": "web_url",
             "title": link.link_name,
@@ -59,7 +77,7 @@ export const messageTextUrlAndSuggestions = (sender_psid, message, links, replie
     return requestBody
 }
 
-export const buildQuickReply = (text, payload): any => {
+export const buildQuickReply = (text: string, payload: string): QuickReply => {
     let quickReply = {
         content_type: 'text',
         title: text,
@@ -68,9 +86,9 @@ export const buildQuickReply = (text, payload): any => {
     return quickReply
 }
 
-export const buildQuickReplies = (suggestions): any => {
+export const buildQuickReplies = (suggestions: Suggestion[]): QuickReply[] => {
     if (suggestions) {
-        let quickReplies = []
+        let quickReplies = new Array<QuickReply>()
         suggestions.forEach(suggestion => {
             if (suggestion.suggestion_code) {
                 quickReplies.push(buildQuickReply(suggestion.suggestion_text, suggestion.suggestion_code))

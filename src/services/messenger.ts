@@ -1,17 +1,28 @@
+import { Response } from 'express'
+import * as crypto from 'crypto'
 import {
-    sendMessage, messageText, messageTextAndQuickReplies, messageTextUrlAndSuggestions, buildQuickReplies,
+	WebhookVerificationRequest,
+	WebhookHandlingRequest,
+	Entry,
+	BoticotData,
+	Message,
+	Webhook,
+} from '../../typings/global'
+import {
+    sendMessage,
+    messageText,
+    messageTextAndQuickReplies,
+    messageTextUrlAndSuggestions,
+    buildQuickReplies,
 } from '../utils/messenger';
 import { parseNlu, requestIntent } from '../client/nlu'
-import * as crypto from 'crypto'
 
 const TECHNICAL_ERROR_MESSAGE = 'Technical error\nPlease retry later'
 const SERVER_ERROR_MESSAGE = 'Server error\nPlease retry later'
 
 class MessengerService {
-
-
-    public async authorizeWebhook(req: any, res: any): Promise<void> {
-        let VERIFY_TOKEN = process.env.VERIFY_TOKEN
+    public authorizeWebhook(req: WebhookVerificationRequest, res: Response): void {
+        let { VERIFY_TOKEN } = process.env
         let mode = req.query['hub.mode']
         let token = req.query['hub.verify_token']
         let challenge = req.query['hub.challenge']
@@ -27,7 +38,7 @@ class MessengerService {
         }
     }
 
-    public async handleWebhook(req: any, res: any): Promise<void> {
+    public async handleWebhook(req: WebhookHandlingRequest, res: Response): Promise<void> {
         try {
             let body = req.body;
             if (body.object === 'page') {
@@ -46,14 +57,16 @@ class MessengerService {
         }
     }
 
-    async handleEntry(entry: any): Promise<void> {
-        let sender_psid
+    async handleEntry(entry: Entry): Promise<void> {
+        let sender_psid: string
         try {
             if (entry.messaging !== undefined) {
                 let webhook_event = entry.messaging[0];
                 const sender_psid = webhook_event.sender.id
                 if (webhook_event.message !== undefined) {
-                    if (!(webhook_event.message.hasOwnProperty("quick_reply"))) {
+                    if (
+                        !Object.prototype.hasOwnProperty.call(webhook_event.message, 'quick_reply')
+                    ) {
                         this.handleMessage(sender_psid, webhook_event.message.text);
                     } else {
                         this.handleQuickReplies(sender_psid, webhook_event.message);
@@ -65,7 +78,7 @@ class MessengerService {
             } else {
                 console.error(`Unknown Entry ${JSON.stringify(entry)}`)
             }
-        } catch (error) {
+        } catch (error: unknown) {
             console.error(`Error when handling entry ${error}`)
             if (sender_psid) {
                 sendMessage(messageText(sender_psid, TECHNICAL_ERROR_MESSAGE))
@@ -73,42 +86,55 @@ class MessengerService {
         }
     }
 
-    async handleMessage(sender_psid, received_message) {
+    async handleMessage(sender_psid: string, received_message: string) {
         try {
-            const res = await parseNlu(received_message, sender_psid)
-            sendMessage(this.buildMessages(sender_psid, res))
-        } catch (error) {
+            console.log('Received message : ', received_message)
+			const boticot_data = await parseNlu(received_message, sender_psid)
+			const message = await this.buildMessages(sender_psid, boticot_data)
+			console.log('Built message : ', message)
+			sendMessage(message)
+        } catch (error: unknown) {
             console.error(`Error when handling message ${error}`)
             sendMessage(messageText(sender_psid, SERVER_ERROR_MESSAGE))
         }
     }
 
-    async handleIntent(sender_psid, intent) {
+    async handleIntent(sender_psid: string, intent: string) {
         try {
-            const res = await requestIntent(intent, sender_psid)
-            sendMessage(this.buildMessages(sender_psid, res))
-        } catch (error) {
+            const boticot_data = await requestIntent(intent, sender_psid)
+			const message = await this.buildMessages(sender_psid, boticot_data)
+			sendMessage(message)
+        } catch (error: unknown) {
             console.error(`Error when handling intent ${error}`)
             sendMessage(messageText(sender_psid, SERVER_ERROR_MESSAGE))
         }
     }
 
-    buildMessages(sender_psid, response) {
-        if (response.response.fulfillment_text) {
-            if (response.response.links) {
-                return messageTextUrlAndSuggestions(sender_psid, response.response.fulfillment_text, response.response.links, buildQuickReplies(response.response.suggestions))
-            } else if (response.response.suggestions) {
-                return messageTextAndQuickReplies(sender_psid, buildQuickReplies(response.response.suggestions), response.response.fulfillment_text)
+    buildMessages(sender_psid: string, boticot_data: BoticotData) {
+        if (boticot_data.response.fulfillment_text) {
+            if (boticot_data.response.links) {
+                return messageTextUrlAndSuggestions(
+                    sender_psid,
+                    boticot_data.response.fulfillment_text,
+                    boticot_data.response.links,
+                    buildQuickReplies(boticot_data.response.suggestions)
+                )
+            } else if (boticot_data.response.suggestions) {
+                return messageTextAndQuickReplies(
+                    sender_psid,
+                    buildQuickReplies(boticot_data.response.suggestions),
+                    boticot_data.response.fulfillment_text
+                )
             } else {
-                return messageText(sender_psid, response.response.fulfillment_text)
+                return messageText(sender_psid, boticot_data.response.fulfillment_text)
             }
         } else {
             throw Error('Missed Fulfillment Text in response')
         }
     }
 
-    async handleQuickReplies(sender_psid, received_postback) {
-        let payload = received_postback.quick_reply.payload;
+    async handleQuickReplies(sender_psid: string, received_postback: Message) {
+        let { payload } = received_postback.quick_reply
         if (payload.startsWith("INTENT_QR_")) {
             const intent = payload.replace("INTENT_QR_", "")
             this.handleIntent(sender_psid, intent)
@@ -117,8 +143,7 @@ class MessengerService {
         }
     }
 
-    async handlePostback(sender_psid, webhook) {
-        const payload = webhook.payload;
+    async handlePostback(sender_psid: string, webhook: Webhook) {
         this.handleMessage(sender_psid, webhook.title)
     }
 
@@ -129,7 +154,7 @@ class MessengerService {
         return hmac.digest('hex');
     }
 
-    public isValidSignature(headerSignature: string, body: any): boolean {
+    public isValidSignature(headerSignature: string, body: string): boolean {
         let expectedSignature = this.getHash(body)
         if (headerSignature.length == 45 && headerSignature.substring(0, 5) === 'sha1=') {
             let signature = headerSignature.substring(5)
