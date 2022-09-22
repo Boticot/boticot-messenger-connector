@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { MessengerRequest } from '../../typings/global';
 
-export const sendToUser = async (message: any) => {
+export const sendToUser = async (message: MessengerRequest) => {
     const { FACEBOOK_GRAPH_API_URL, PAGE_ACCESS_TOKEN } = process.env;
     const url = `${FACEBOOK_GRAPH_API_URL}/messages?access_token=${PAGE_ACCESS_TOKEN}`;
     axios
