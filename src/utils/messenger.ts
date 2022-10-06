@@ -7,7 +7,15 @@ import {
 	MessengerRequest,
 	Button,
 } from '../../typings/global'
-import { sendToUser } from '../client/messenger'
+import { sendMessagesToUser } from '../client/messenger'
+
+export const sendMessage = (message: MessengerRequest): void => {
+    sendMessagesToUser([message])
+}
+
+export const sendMessages = (messages: MessengerRequest[]): void => {
+    sendMessagesToUser(messages)
+}
 
 export const messageText = (sender_psid: string, message: string): MessengerTextRequest => {
     const requestBody = {
@@ -21,8 +29,8 @@ export const messageText = (sender_psid: string, message: string): MessengerText
     return requestBody
 }
 
-export const sendMessage = (message: MessengerRequest): void => {
-    sendToUser(message)
+export const messagesTexts = (sender_psid: string, messages: string[]): MessengerTextRequest[] => {
+    return messages.map(message => messageText(sender_psid, message))
 }
 
 export const messageTextAndQuickReplies = (
@@ -41,6 +49,20 @@ export const messageTextAndQuickReplies = (
         }
     }
     return request_body
+}
+
+export const messagesTextsAndQuickReplies = (
+    sender_psid: string,
+    replies: QuickReply[],
+    texts: string[]
+): MessengerRequest[] => {
+    if (texts && texts.length == 1) {
+        return [messageTextAndQuickReplies(sender_psid, replies, texts[0])]
+    } else {
+        return texts.slice(0, texts.length - 1).map(message => messageText(sender_psid, message)).concat(
+            messageTextAndQuickReplies(sender_psid, replies, texts[texts.length - 1])
+        )
+    }
 }
 
 export const messageTextUrlAndSuggestions = (
@@ -75,6 +97,21 @@ export const messageTextUrlAndSuggestions = (
         }
     }
     return requestBody
+}
+
+export const messagesTextsUrlAndSuggestions = (
+    sender_psid: string,
+    messages: string[],
+    links: Link[],
+    replies: QuickReply[],
+): MessengerRequest[] => {
+    if (messages && messages.length == 1) {
+        return [messageTextUrlAndSuggestions(sender_psid, messages[0], links, replies)]
+    } else {
+        return messages.slice(0, messages.length - 1).map(message => messageText(sender_psid, message)).concat(
+            messageTextUrlAndSuggestions(sender_psid, messages[messages.length - 1], links, replies)
+        )
+    }
 }
 
 export const buildQuickReply = (text: string, payload: string): QuickReply => {
