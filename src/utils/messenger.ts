@@ -6,8 +6,9 @@ import {
 	MessengerTextRequest,
 	MessengerRequest,
 	Button,
+    Image,
 } from '../../typings/global'
-import { sendMessagesToUser } from '../client/messenger'
+import { sendMessagesToUser, loadImage } from '../client/messenger'
 
 export const sendMessage = (message: MessengerRequest): void => {
     sendMessagesToUser([message])
@@ -112,6 +113,35 @@ export const messagesTextsUrlAndSuggestions = (
             messageTextUrlAndSuggestions(sender_psid, messages[messages.length - 1], links, replies)
         )
     }
+}
+
+export const messageImage = async (
+	sender_psid: string,
+    images: Image[],
+    quick_replies?: QuickReply[],
+): Promise<MessengerRequest> => {
+	const { attachment_id } = await loadImage(images[0].image_url)
+	const requestBody = {
+		recipient: {
+			id: sender_psid,
+		},
+		message: {
+			attachment: {
+				type: 'template',
+				payload: {
+					template_type: 'media',
+					elements: [
+						{
+							media_type: 'image',
+							attachment_id: attachment_id,
+						},
+					],
+				},
+			},
+            quick_replies: quick_replies
+		},
+	}
+	return requestBody
 }
 
 export const buildQuickReply = (text: string, payload: string): QuickReply => {
