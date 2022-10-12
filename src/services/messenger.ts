@@ -7,13 +7,16 @@ import {
 	BoticotData,
 	Message,
 	Webhook,
+    MessengerRequest,
 } from '../../typings/global'
 import {
     sendMessage,
+    sendMessages,
     messageText,
     messageTextAndQuickReplies,
     messageTextUrlAndSuggestions,
     buildQuickReplies,
+    messageImage,
 } from '../utils/messenger';
 import { parseNlu, requestIntent } from '../client/nlu'
 
@@ -92,7 +95,7 @@ class MessengerService {
 			const boticot_data = await parseNlu(received_message, sender_psid)
 			const message = await this.buildMessages(sender_psid, boticot_data)
 			console.log('Built message : ', message)
-			sendMessage(message)
+            sendMessages(message)
         } catch (error: unknown) {
             console.error(`Error when handling message ${error}`)
             sendMessage(messageText(sender_psid, SERVER_ERROR_MESSAGE))
@@ -103,34 +106,50 @@ class MessengerService {
         try {
             const boticot_data = await requestIntent(intent, sender_psid)
 			const message = await this.buildMessages(sender_psid, boticot_data)
-			sendMessage(message)
+            sendMessages(message)
         } catch (error: unknown) {
             console.error(`Error when handling intent ${error}`)
             sendMessage(messageText(sender_psid, SERVER_ERROR_MESSAGE))
         }
     }
 
-    buildMessages(sender_psid: string, boticot_data: BoticotData) {
+    async buildMessages(sender_psid: string, boticot_data: BoticotData): Promise<MessengerRequest[]> {
+        const result = new Array<MessengerRequest>()
         if (boticot_data.response.fulfillment_text) {
             if (boticot_data.response.links) {
-                return messageTextUrlAndSuggestions(
+                result.push(messageTextUrlAndSuggestions(
                     sender_psid,
                     boticot_data.response.fulfillment_text,
                     boticot_data.response.links,
                     buildQuickReplies(boticot_data.response.suggestions)
-                )
-            } else if (boticot_data.response.suggestions) {
-                return messageTextAndQuickReplies(
+                ))
+            } else if (boticot_data.response.suggestions && !(boticot_data.response.images && boticot_data.response.images.length > 0)) {
+                result.push(messageTextAndQuickReplies(
                     sender_psid,
                     buildQuickReplies(boticot_data.response.suggestions),
                     boticot_data.response.fulfillment_text
-                )
+                ))
             } else {
-                return messageText(sender_psid, boticot_data.response.fulfillment_text)
+                result.push(messageText(sender_psid, boticot_data.response.fulfillment_text))
             }
+            if (boticot_data.response.images && boticot_data.response.images.length > 0) {
+                if (boticot_data.response.suggestions) {
+                    result.push(await messageImage(
+                        sender_psid,
+                        boticot_data.response.images,
+                        buildQuickReplies(boticot_data.response.suggestions),
+                    ))
+                } else {
+                    result.push(await messageImage(
+                        sender_psid,
+                        boticot_data.response.images,
+                    ))
+                }
+			}
         } else {
             throw Error('Missed Fulfillment Text in response')
         }
+        return result
     }
 
     async handleQuickReplies(sender_psid: string, received_postback: Message) {

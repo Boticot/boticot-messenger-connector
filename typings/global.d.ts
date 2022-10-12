@@ -39,16 +39,32 @@ export interface Sender {
 	id: string
 }
 
-export type Message = MessageText | MessageQuickReplies
+export type Message = MessageText | MessageQuickReplies | MessageImage
 
 export interface MessageText {
 	text: string
 	quick_reply?: never
+	attachments: never
 }
 
 export interface MessageQuickReplies {
 	quick_reply: QuickReply
 	text?: never
+	attachments: never
+}
+
+export interface MessageImage {
+	attachments: Attachment[]
+	text?: never
+	quick_reply?: never
+}
+
+export class ImageLoadResponse {
+	data: ImageLoadData
+}
+
+export class ImageLoadData {
+	attachment_id: string
 }
 
 export interface BoticotResponse {
@@ -65,6 +81,13 @@ export interface ResponseAnswer {
 	links?: Link[]
 }
 
+export interface ResponseAnswer {
+	fulfillment_text?: string
+	suggestions?: Suggestion[]
+	links?: Link[]
+	images?: Image[]
+}
+
 export interface Suggestion {
 	suggestion_code?: string
 	suggestion_intent?: string
@@ -75,6 +98,11 @@ export interface Suggestion {
 export interface Link {
 	link_name: string
 	url: string
+}
+
+export class Image {
+	image_name: string
+	image_url: string
 }
 
 export interface QuickReply {
